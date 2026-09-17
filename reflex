@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Réflexe Rush</title>
+
+<style>
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html, body {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  font-family: Arial, sans-serif;
+  background: #10131a;
+  color: white;
+  touch-action: manipulation;
+}
+
+body {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+#jeu {
+  width: 100%;
+  max-width: 600px;
+  height: 100%;
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(160deg, #18243a, #090c13);
+}
+
+.ecran {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 25px;
+  text-align: center;
+}
+
+.cache {
+  display: none !important;
+}
+
+h1 {
+  font-size: 48px;
+  margin: 0 0 10px;
+}
+
+.sous-titre {
+  color: #b8c3d9;
+  font-size: 18px;
+  margin-bottom: 35px;
+}
+
+button {
+  border: none;
+  border-radius: 18px;
+  padding: 18px 45px;
+  font-size: 22px;
+  font-weight: bold;
+  color: white;
+  background: #2878ff;
+  box-shadow: 0 7px 0 #1550b5;
+}
+
+button:active {
+  transform: translateY(5px);
+  box-shadow: 0 2px 0 #1550b5;
+}
+
+#score {
+  position: absolute;
+  top: 18px;
+  left: 18px;
+  font-size: 22px;
+  font-weight: bold;
+  z-index: 5;
+}
+
+#chrono {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  font-size: 22px;
+  font-weight: bold;
+  z-index: 5;
+}
+
+#zone {
+  position: absolute;
+  left: 6%;
+  right: 6%;
+  top: 18%;
+  bottom: 8%;
+  border: 2px solid #30394b;
+  border-radius: 25px;
+  overflow: hidden;
+}
+
+#cible {
+  position: absolute;
+  width: 85px;
+  height: 85px;
+  border-radius: 50%;
+  background: #ff304f;
+  box-shadow: 0 0 25px rgba(255, 48, 79, .7);
+  display: none;
+}
+
+#message {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  pointer-events: none;
+  font-size: 30px;
+  font-weight: bold;
+  text-shadow: 0 3px 8px black;
+}
+
+#resultat h2 {
+  font-size: 38px;
+  margin-bottom: 10px;
+}
+
+.stat {
+  font-size: 21px;
+  margin: 8px;
+  color: #d9e2f3;
+}
+
+#meilleur {
+  color: #ffd43b;
+  font-weight: bold;
+}
+</style>
+</head>
+
+<body>
+
+<div id="jeu">
+
+  <!-- MENU -->
+  <div id="menu" class="ecran">
+    <h1>⚡ Réflexe Rush</h1>
+    <div class="sous-titre">
+      Teste tes réflexes !<br>
+      Appuie sur la cible le plus vite possible.
+    </div>
+
+    <button id="jouer">JOUER</button>
+  </div>
+
+  <!-- JEU -->
+  <div id="partie" class="ecran cache">
+
+    <div id="score">Score : 0</div>
+    <div id="chrono">30 s</div>
+
+    <div id="zone">
+      <div id="cible"></div>
+      <div id="message"></div>
+    </div>
+
+  </div>
+
+  <!-- RESULTAT -->
+  <div id="resultat" class="ecran cache">
+
+    <h2>🏁 Partie terminée !</h2>
+
+    <div class="stat">
+      Score : <strong id="scoreFinal">0</strong>
+    </div>
+
+    <div class="stat">
+      Meilleur score : <strong id="meilleur">0</strong>
+    </div>
+
+    <br>
+
+    <button id="rejouer">REJOUER</button>
+
+  </div>
+
+</div>
+
+<script>
+/* =========================
+   RÉFLEXE RUSH
+   ========================= */
+
+const menu = document.getElementById("menu");
+const partie = document.getElementById("partie");
+const resultat = document.getElementById("resultat");
+
+const boutonJouer = document.getElementById("jouer");
+const boutonRejouer = document.getElementById("rejouer");
+
+const cible = document.getElementById("cible");
+const zone = document.getElementById("zone");
+
+const scoreTexte = document.getElementById("score");
+const chronoTexte = document.getElementById("chrono");
+const scoreFinal = document.getElementById("scoreFinal");
+const meilleurTexte = document.getElementById("meilleur");
+const message = document.getElementById("message");
+
+let score = 0;
+let temps = 30;
+let intervalle = null;
+let partieEnCours = false;
+
+let meilleurScore =
+  Number(localStorage.getItem("reflexRushMeilleur")) || 0;
+
+meilleurTexte.textContent = meilleurScore;
+
+
+/* =========================
+   LANCER LA PARTIE
+   ========================= */
+
+function lancerPartie() {
+
+  menu.classList.add("cache");
+  resultat.classList.add("cache");
+  partie.classList.remove("cache");
+
+  score = 0;
+  temps = 30;
+  partieEnCours = true;
+
+  scoreTexte.textContent = "Score : 0";
+  chronoTexte.textContent = "30 s";
+  message.textContent = "";
+
+  cible.style.display = "block";
+
+  placerCible();
+
+  clearInterval(intervalle);
+
+  intervalle = setInterval(() => {
+
+    temps--;
+
+    chronoTexte.textContent = temps + " s";
+
+    if (temps <= 0) {
+      terminerPartie();
+    }
+
+  }, 1000);
+}
+
+
+/* =========================
+   PLACER LA CIBLE
+   ========================= */
+
+function placerCible() {
+
+  const largeur = zone.clientWidth;
+  const hauteur = zone.clientHeight;
+
+  const taille = cible.offsetWidth;
+
+  const maxX = Math.max(0, largeur - taille);
+  const maxY = Math.max(0, hauteur - taille);
+
+  const x = Math.random() * maxX;
+  const y = Math.random() * maxY;
+
+  cible.style.left = x + "px";
+  cible.style.top = y + "px";
+}
+
+
+/* =========================
+   CLIC / TOUCHER LA CIBLE
+   ========================= */
+
+cible.addEventListener("pointerdown", function(e) {
+
+  e.preventDefault();
+
+  if (!partieEnCours) return;
+
+  score++;
+
+  scoreTexte.textContent = "Score : " + score;
+
+  placerCible();
+
+});
+
+
+/* =========================
+   FIN DE PARTIE
+   ========================= */
+
+function terminerPartie() {
+
+  partieEnCours = false;
+
+  clearInterval(intervalle);
+
+  cible.style.display = "none";
+
+  scoreFinal.textContent = score;
+
+  if (score > meilleurScore) {
+
+    meilleurScore = score;
+
+    localStorage.setItem(
+      "reflexRushMeilleur",
+      meilleurScore
+    );
+  }
+
+  meilleurTexte.textContent = meilleurScore;
+
+  partie.classList.add("cache");
+  resultat.classList.remove("cache");
+}
+
+
+/* =========================
+   BOUTONS
+   ========================= */
+
+boutonJouer.addEventListener("click", lancerPartie);
+
+boutonRejouer.addEventListener("click", lancerPartie);
+
+
+/* =========================
+   EMPÊCHER LE ZOOM
+   ========================= */
+
+document.addEventListener("gesturestart", function(e) {
+  e.preventDefault();
+});
+
+</script>
+
+</body>
+</html>
