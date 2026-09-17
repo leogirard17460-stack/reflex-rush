@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Réflexe Rush</title>
+
+<style>
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html, body {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  font-family: Arial, sans-serif;
+  background: #101827;
+  color: white;
+}
+
+body {
+  touch-action: manipulation;
+}
+
+#app {
+  width: 100%;
+  height: 100%;
+  max-width: 600px;
+  margin: auto;
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(160deg, #172554, #111827);
+}
+
+header {
+  height: 80px;
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  background: rgba(0,0,0,.25);
+}
+
+.stat {
+  text-align: center;
+}
+
+.stat small {
+  display: block;
+  opacity: .65;
+  font-size: 12px;
+}
+
+.stat strong {
+  font-size: 23px;
+}
+
+.screen {
+  position: absolute;
+  top: 80px;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 25px;
+}
+
+h1 {
+  font-size: 44px;
+  margin: 0 0 12px;
+}
+
+p {
+  font-size: 18px;
+  line-height: 1.5;
+  opacity: .8;
+}
+
+button {
+  margin-top: 25px;
+  border: 0;
+  border-radius: 18px;
+  padding: 18px 50px;
+  background: #2563eb;
+  color: white;
+  font-size: 22px;
+  font-weight: bold;
+  box-shadow: 0 6px 0 #1746a2;
+  touch-action: manipulation;
+}
+
+button:active {
+  transform: translateY(5px);
+  box-shadow: 0 1px 0 #1746a2;
+}
+
+#game {
+  display: none;
+  position: absolute;
+  top: 80px;
+  left: 0;
+  right: 0;
+  bottom: 0;
+}
+
+#target {
+  position: absolute;
+  width: 82px;
+  height: 82px;
+  border-radius: 50%;
+  background: #22c55e;
+  border: 7px solid white;
+  box-shadow: 0 0 25px rgba(255,255,255,.5);
+  display: none;
+  touch-action: manipulation;
+}
+
+#target::after {
+  content: "";
+  position: absolute;
+  width: 24px;
+  height: 24px;
+  background: white;
+  border-radius: 50%;
+  left: 22px;
+  top: 22px;
+}
+
+#countdown {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 90px;
+  font-weight: bold;
+}
+
+#result {
+  display: none;
+}
+
+#finalScore {
+  font-size: 70px;
+  font-weight: bold;
+  margin-top: 10px;
+}
+</style>
+</head>
+
+<body>
+
+<div id="app">
+
+<header>
+  <div class="stat">
+    <small>SCORE</small>
+    <strong id="score">0</strong>
+  </div>
+
+  <div class="stat">
+    <small>TOUR</small>
+    <strong id="round">0/10</strong>
+  </div>
+
+  <div class="stat">
+    <small>RECORD</small>
+    <strong id="best">0</strong>
+  </div>
+</header>
+
+<!-- ACCUEIL -->
+<div id="home" class="screen">
+
+  <h1>⚡ Réflexe Rush</h1>
+
+  <p>
+    Teste tes réflexes !<br>
+    Appuie sur la cible dès qu'elle apparaît.
+  </p>
+
+  <button id="play">JOUER</button>
+
+</div>
+
+<!-- JEU -->
+<div id="game">
+
+  <div id="countdown"></div>
+
+  <div id="target"></div>
+
+</div>
+
+<!-- FIN -->
+<div id="result" class="screen">
+
+  <h1>🏆 Terminé !</h1>
+
+  <p>Ton score :</p>
+
+  <div id="finalScore">0</div>
+
+  <button id="again">REJOUER</button>
+
+</div>
+
+<script>
+
+const home = document.getElementById("home");
+const game = document.getElementById("game");
+const result = document.getElementById("result");
+
+const play = document.getElementById("play");
+const again = document.getElementById("again");
+
+const target = document.getElementById("target");
+const countdown = document.getElementById("countdown");
+
+const scoreText = document.getElementById("score");
+const roundText = document.getElementById("round");
+const bestText = document.getElementById("best");
+const finalScore = document.getElementById("finalScore");
+
+let score = 0;
+let round = 0;
+let startTime = 0;
+let playing = false;
+
+const TOTAL_ROUNDS = 10;
+
+let best = Number(localStorage.getItem("reflexeRushBest")) || 0;
+bestText.textContent = best;
+
+
+/* DÉMARRER */
+play.addEventListener("click", startGame);
+again.addEventListener("click", startGame);
+
+
+/* JEU */
+function startGame() {
+
+  score = 0;
+  round = 0;
+  playing = false;
+
+  scoreText.textContent = "0";
+  roundText.textContent = "0/" + TOTAL_ROUNDS;
+
+  home.style.display = "none";
+  result.style.display = "none";
+  game.style.display = "block";
+
+  target.style.display = "none";
+
+  lancerCompteARebours();
+}
+
+
+/* COMPTE À REBOURS */
+function lancerCompteARebours() {
+
+  let n = 3;
+
+  countdown.textContent = n;
+
+  const timer = setInterval(() => {
+
+    n--;
+
+    if (n > 0) {
+      countdown.textContent = n;
+    } else {
+      clearInterval(timer);
+      countdown.textContent = "";
+      nouvelleManche();
+    }
+
+  }, 700);
+}
+
+
+/* NOUVELLE MANCHE */
+function nouvelleManche() {
+
+  if (round >= TOTAL_ROUNDS) {
+    terminer();
+    return;
+  }
+
+  round++;
+
+  roundText.textContent = round + "/" + TOTAL_ROUNDS;
+
+  // Petit délai aléatoire pour rendre le jeu plus difficile
+  const attente = 400 + Math.random() * 1000;
+
+  setTimeout(() => {
+
+    if (round <= TOTAL_ROUNDS) {
+      afficherCible();
+    }
+
+  }, attente);
+}
+
+
+/* AFFICHER LA CIBLE */
+function afficherCible() {
+
+  const zoneWidth = game.clientWidth;
+  const zoneHeight = game.clientHeight;
+
+  const taille = 82;
+
+  const x = Math.random() * (zoneWidth - taille);
+  const y = Math.random() * (zoneHeight - taille);
+
+  target.style.left = x + "px";
+  target.style.top = y + "px";
+
+  target.style.display = "block";
+
+  playing = true;
+
+  startTime = performance.now();
+}
+
+
+/* TOUCHER LA CIBLE */
+target.addEventListener("pointerdown", toucherCible);
+
+function toucherCible(event) {
+
+  event.preventDefault();
+
+  if (!playing) return;
+
+  playing = false;
+
+  const temps = performance.now() - startTime;
+
+  target.style.display = "none";
+
+  // Plus tu es rapide, plus tu gagnes de points
+  let points = Math.max(10, Math.round(1000 / temps * 100));
+
+  if (temps < 300) {
+    points += 100;
+  }
+
+  score += points;
+
+  scoreText.textContent = score;
+
+  nouvelleManche();
+}
+
+
+/* FIN DE PARTIE */
+function terminer() {
+
+  playing = false;
+
+  target.style.display = "none";
+
+  game.style.display = "none";
+  result.style.display = "flex";
+
+  finalScore.textContent = score;
+
+  if (score > best) {
+
+    best = score;
+
+    localStorage.setItem(
+      "reflexeRushBest",
+      best
+    );
+
+    bestText.textContent = best;
+  }
+}
+
+</script>
+
+</div>
+
+</body>
+</html>
