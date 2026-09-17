@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport"
+      content="width=device-width, initial-scale=1.0,
+      maximum-scale=1.0,user-scalable=no">
+
+<title>Défi Réflexe</title>
+
+<style>
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html, body {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  touch-action: manipulation;
+  font-family: Arial, sans-serif;
+  background: #111;
+}
+
+canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+#menu, #resultat {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  color: white;
+  background: linear-gradient(160deg, #111827, #172554);
+}
+
+#resultat {
+  display: none;
+}
+
+h1 {
+  font-size: 42px;
+  margin: 10px;
+}
+
+p {
+  font-size: 20px;
+  margin: 8px 20px;
+}
+
+button {
+  margin-top: 25px;
+  padding: 18px 45px;
+  border: none;
+  border-radius: 18px;
+  background: white;
+  color: #111827;
+  font-size: 24px;
+  font-weight: bold;
+}
+
+#info {
+  position: fixed;
+  top: 18px;
+  left: 0;
+  width: 100%;
+  text-align: center;
+  color: white;
+  font-size: 22px;
+  font-weight: bold;
+  z-index: 5;
+  pointer-events: none;
+}
+
+#chrono {
+  font-size: 54px;
+  margin: 15px;
+}
+</style>
+</head>
+
+<body>
+
+<div id="menu">
+  <h1>⚡ DÉFI RÉFLEXE</h1>
+  <p>Teste ta vitesse !</p>
+  <p>Attends le changement puis appuie le plus vite possible.</p>
+  <button id="jouer">JOUER</button>
+</div>
+
+<div id="resultat">
+  <h1>🏆 BRAVO !</h1>
+  <div id="chrono">0 ms</div>
+  <p id="message"></p>
+  <button id="rejouer">REJOUER</button>
+</div>
+
+<div id="info">Appuie sur JOUER</div>
+
+<canvas id="jeu"></canvas>
+
+<script>
+const canvas = document.getElementById("jeu");
+const ctx = canvas.getContext("2d");
+
+const menu = document.getElementById("menu");
+const resultat = document.getElementById("resultat");
+const jouer = document.getElementById("jouer");
+const rejouer = document.getElementById("rejouer");
+const info = document.getElementById("info");
+const chrono = document.getElementById("chrono");
+const message = document.getElementById("message");
+
+let largeur;
+let hauteur;
+
+let enJeu = false;
+let pret = false;
+let tempsDebut = 0;
+let timer = null;
+
+function tailleEcran() {
+  largeur = window.innerWidth;
+  hauteur = window.innerHeight;
+
+  canvas.width = largeur * devicePixelRatio;
+  canvas.height = hauteur * devicePixelRatio;
+
+  canvas.style.width = largeur + "px";
+  canvas.style.height = hauteur + "px";
+
+  ctx.setTransform(
+    devicePixelRatio,
+    0,
+    0,
+    devicePixelRatio,
+    0,
+    0
+  );
+
+  dessiner("#182033");
+}
+
+window.addEventListener("resize", tailleEcran);
+
+function dessiner(couleur) {
+  ctx.fillStyle = couleur;
+  ctx.fillRect(0, 0, largeur, hauteur);
+
+  ctx.fillStyle = "rgba(255,255,255,0.08)";
+  ctx.beginPath();
+  ctx.arc(
+    largeur / 2,
+    hauteur / 2,
+    Math.min(largeur, hauteur) * 0.32,
+    0,
+    Math.PI * 2
+  );
+  ctx.fill();
+}
+
+function demarrer() {
+  menu.style.display = "none";
+  resultat.style.display = "none";
+
+  enJeu = true;
+  pret = false;
+
+  dessiner("#182033");
+
+  info.textContent = "ATTENDS...";
+
+  const delai = 1500 + Math.random() * 3500;
+
+  clearTimeout(timer);
+
+  timer = setTimeout(() => {
+    if (!enJeu) return;
+
+    pret = true;
+    tempsDebut = performance.now();
+
+    dessiner("#18a957");
+
+    info.textContent = "⚡ APPUIE MAINTENANT !";
+  }, delai);
+}
+
+function toucher() {
+  if (!enJeu) return;
+
+  // Appui trop tôt
+  if (!pret) {
+    clearTimeout(timer);
+
+    enJeu = false;
+
+    dessiner("#b91c1c");
+
+    info.textContent = "TROP TÔT !";
+
+    setTimeout(() => {
+      resultat.style.display = "flex";
+      chrono.textContent = "❌";
+      message.textContent =
+        "Tu as appuyé avant le signal. Réessaie !";
+    }, 500);
+
+    return;
+  }
+
+  const temps = Math.round(performance.now() - tempsDebut);
+
+  enJeu = false;
+  pret = false;
+
+  dessiner("#2563eb");
+
+  info.textContent = temps + " ms";
+
+  chrono.textContent = temps + " ms";
+
+  if (temps < 250) {
+    message.textContent = "⚡ Réflexe ultra rapide !";
+  } else if (temps < 400) {
+    message.textContent = "🔥 Très bon réflexe !";
+  } else if (temps < 600) {
+    message.textContent = "👏 Bien joué !";
+  } else {
+    message.textContent = "💪 Essaie encore pour améliorer ton temps !";
+  }
+
+  setTimeout(() => {
+    resultat.style.display = "flex";
+  }, 500);
+}
+
+jouer.addEventListener("click", demarrer);
+rejouer.addEventListener("click", demarrer);
+
+canvas.addEventListener(
+  "touchstart",
+  function(e) {
+    e.preventDefault();
+    toucher();
+  },
+  { passive: false }
+);
+
+canvas.addEventListener(
+  "mousedown",
+  function() {
+    toucher();
+  }
+);
+
+tailleEcran();
+</script>
+
+</body>
+</html>
